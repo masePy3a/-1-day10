@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Day10 TOEIC模擬クイズ（問題隠し＋選択肢常時表示）</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 40px; }
+    .option-btn { margin: 5px; padding: 10px 20px; border: 1px solid #ccc; cursor: pointer; }
+    .correct { color: green; font-weight: bold; }
+    .incorrect { color: red; font-weight: bold; }
+    #timer { font-size: 1.5em; color: #667eea; margin: 10px; }
+    #question { visibility: hidden; }
+  </style>
+</head>
+<body>
+  <h1>🎓 TOEIC模擬クイズ</h1>
+
+  <!-- Timer -->
+  <p id="timer">03:00</p>
+  <button onclick="startTraining()">Start Training (3 minutes)</button>
+
+  <!-- Quiz -->
+  <p id="question">ここに問題が表示されます</p>
+  <div id="options"></div>
+  <p id="result"></p>
+  <p id="score"></p>
+
+  <script>
+    const quizData = [
+      { part: "Part 2", question: " When will you confirm the schedule?",
+        options: ["① I confirmed it yesterday.", "② Yes, I like the schedule.", "③ I will confirm it tomorrow."],
+        answer: 2 },
+      { part: "Part 2", question: " Could you announce the results at the meeting?",
+        options: ["① Yes, I will announce them.", "② No, I don’t like meetings.", "③ The results are very interesting."],
+        answer: 0 },
+      { part: "Part 3", dialogueContext: "M: The supplier delayed the delivery. W: I'll contact them and adjust the schedule.",
+        question: "What will the woman do?",
+        options: ["① Contact the supplier and adjust the schedule.", "② Cancel the order.", "③ Ignore the delay."],
+        answer: 0 },
+      { part: "Part 4", dialogueContext: "[Announcement] Attention: The equipment inspection will take place tomorrow morning.",
+        question: "What is the announcement about?",
+        options: ["① Equipment inspection", "② A new contract", "③ Office closure"],
+        answer: 0 }
+    ];
+
+    let current = 0, score = 0;
+    let countdown, autoProgress;
+
+    function startTraining() {
+      let timeRemaining = 3 * 60;
+      document.querySelector("button").disabled = true;
+
+      countdown = setInterval(() => {
+        timeRemaining--;
+        let m = Math.floor(timeRemaining / 60);
+        let s = timeRemaining % 60;
+        document.getElementById("timer").textContent =
+          (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+        if (timeRemaining <= 0) {
+          clearInterval(countdown);
+          endQuiz("⏱ 時間終了！お疲れさまでした。");
+        }
+      }, 1000);
+
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      clearTimeout(autoProgress);
+      if (current >= quizData.length) {
+        endQuiz("🎉 クイズ終了！");
+        return;
+      }
+      const q = quizData[current];
+      document.getElementById("question").style.visibility = "hidden";
+      document.getElementById("options").innerHTML = "";
+
+      // 選択肢は常時表示
+      const optionsDiv = document.getElementById("options");
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement("button");
+        btn.textContent = opt;
+        btn.className = "option-btn";
+        btn.onclick = () => checkAnswer(i, q.answer);
+        optionsDiv.appendChild(btn);
+      });
+
+      // 音声読み上げ開始
+      speakQuestion(q);
+    }
+
+    function showQuestion(q) {
+      document.getElementById("question").style.visibility = "visible";
+      if (q.dialogueContext) {
+        document.getElementById("question").textContent = q.dialogueContext + "\n\nQ: " + q.question;
+      } else {
+        document.getElementById("question").textContent = q.part + " - " + q.question;
+      }
+    }
+
+    function checkAnswer(selected, correct) {
+      clearTimeout(autoProgress);
+      if (selected === correct) {
+        document.getElementById("result").textContent = "✓ 正解！";
+        document.getElementById("result").className = "correct";
+        score++;
+      } else {
+        document.getElementById("result").textContent = "✗ 不正解…";
+        document.getElementById("result").className = "incorrect";
+      }
+      document.getElementById("score").textContent = "現在のスコア：" + score + " / " + quizData.length;
+      setTimeout(nextQuestion, 3000);
+    }
+
+    function nextQuestion() {
+      current++;
+      loadQuestion();
+    }
+
+    function endQuiz(message) {
+      clearInterval(countdown);
+      clearTimeout(autoProgress);
+      document.getElementById("question").textContent = message;
+      document.getElementById("options").innerHTML = "";
+      document.getElementById("result").textContent = "";
+      document.getElementById("score").textContent =
+        "最終スコア：" + score + " / " + quizData.length;
+    }
+
+    // 音声読み上げ
+    function speakQuestion(q) {
+      window.speechSynthesis.cancel();
+      if (q.dialogueContext) {
+        const d = new SpeechSynthesisUtterance(q.dialogueContext);
+        d.lang = "en-US"; d.rate = 0.95;
+        d.onend = () => {
+          const u = new SpeechSynthesisUtterance(q.question);
+          u.lang = "en-US"; u.rate = 0.95;
+          u.onend = () => showQuestion(q); // 読み終えたら問題文を表示
+          speechSynthesis.speak(u);
+        };
+        speechSynthesis.speak(d);
+      } else {
+        const utterance = new SpeechSynthesisUtterance(q.question);
+        utterance.lang = "en-US"; utterance.rate = 0.95;
+        utterance.onend = () => showQuestion(q); // 読み終えたら問題文を表示
+        speechSynthesis.speak(utterance);
+      }
+    }
+  </script>
+</body>
+</html>
